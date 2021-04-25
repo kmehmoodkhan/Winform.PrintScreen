@@ -73,6 +73,9 @@ namespace Winform.PrintScreen
                 string tempColor = (colorDialog1.Color.ToArgb() & 0x00FFFFFF).ToString("X6");
                 this.textBoxNumberColor.Text = "#" + tempColor;
                 SettingInstance.NumberColor = tempColor;
+
+                var numberColor = Utility.GetColor(tempColor);
+                this.textBoxNumberColorPallete.BackColor = numberColor;
             }
         }
 
@@ -90,6 +93,9 @@ namespace Winform.PrintScreen
                 string tempColor = (colorDialog1.Color.ToArgb() & 0x00FFFFFF).ToString("X6");
                 this.textBoxBorderColor.Text = "#" + tempColor;
                 SettingInstance.BorderColor = tempColor;
+
+                var borderColor = Utility.GetColor(tempColor);
+                this.textBoxBorderColorPallete.BackColor = borderColor;
             }
         }
 
@@ -136,6 +142,12 @@ namespace Winform.PrintScreen
             if (e.Control && e.KeyCode == Keys.S)
             {
                 Utility.SaveSettings(SettingInstance);
+                var result = MessageBox.Show("Settings saved successfully. Settings will be applied after application restarts.", "Settings Info", MessageBoxButtons.OK,MessageBoxIcon.Information );
+                if( result == DialogResult.OK)
+                {
+                    this.Close();
+                    this.Dispose();
+                }
             }
         }
 

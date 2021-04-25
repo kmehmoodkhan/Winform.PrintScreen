@@ -20,13 +20,31 @@ namespace Winform.PrintScreen
     {
         SettingsInstance SettingsInstance = null;
         string latestImagePath = "";
-        //Image latestImage = null;
         List<string> ImagePaths = null;
         Image CursorImage = null;
         bool isCustomCursorApplied = false;
         int degreeRotation = 0;
         bool recordingStarted = false;
         readonly int borderWidth = 10;
+        bool isSquare = false;
+        Point startPos;
+        Point currentPos;
+        const double BeforePO = .10;
+        const double AfterPO = 1;
+
+
+        string _docPath = string.Empty;
+        private string DocPath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_docPath))
+                {
+                    _docPath = Utility.BasePath + @$"Documents\{DateTime.Now.ToString("yyyyMMddhhmmss")}.docx";
+                }
+                return _docPath;
+            }
+        }
 
         //Moving window by click-drag on a control https://stackoverflow.com/a/13477624/5260872
         public const int WM_NCLBUTTONDOWN = 0xA1;
@@ -42,11 +60,13 @@ namespace Winform.PrintScreen
         public SelectArea()
         {
             InitializeComponent();
-            this.Opacity = .10;
-            //this.SetStyle(ControlStyles.ResizeRedraw, true);
+            this.Opacity = BeforePO;
+            this.DoubleBuffered = true;
+            this.SetStyle(ControlStyles.ResizeRedraw, true);
             this.SettingsInstance = Utility.GetSettings();
             Task.Factory.StartNew(() => Utility.DeleteTempFiles());
             borderWidth = this.SettingsInstance.BorderWidth;
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
         }
 
         protected override void OnPaint(PaintEventArgs e) // you can safely omit this method if you want
@@ -71,7 +91,7 @@ namespace Winform.PrintScreen
             HTBOTTOMLEFT = 16,
             HTBOTTOMRIGHT = 17;
 
-        
+
 
         new Rectangle Top { get { return new Rectangle(0, 0, this.ClientSize.Width, borderWidth); } }
         new Rectangle Left { get { return new Rectangle(0, 0, borderWidth, this.ClientSize.Height); } }
@@ -82,32 +102,19 @@ namespace Winform.PrintScreen
         private void panelDrag_QueryContinueDrag(object sender, QueryContinueDragEventArgs e)
         {
             e.Action = DragAction.Cancel;
-            //this.panelDrag.Cursor = Cursors.Arrow;
             this.panelDrag.AllowDrop = false;
         }
 
         private bool disableMovement = false;
 
         SpeechRecognizer speechRecognizer = null;
+
+        bool isRecordingMode = false;
         private void SelectArea_KeyDown(object sender, KeyEventArgs e)
         {
-            //if (e.Control && e.KeyCode == Keys.A)       // Ctrl-S Save
-            //{
-            //    this.panelDrag.BackgroundImage = null;
-            //    var image = this.SaveImage(this.Location.X, this.Location.Y, this.Width, this.Height, this.Size);
-            //    this.panelDrag.BackgroundImage = image;
-            //    this.panelDrag.DoDragDrop(this.panelDrag, DragDropEffects.None);
-            //    // Do what you want here
-            //    e.SuppressKeyPress = true;  // Stops other controls on the form receiving event.
-            //}
-            //else if (e.Control && e.KeyCode == Keys.S)
-            //{
-            //    latestImage = this.panelDrag.BackgroundImage.Clone() as Image;
-            //}
-            ////else if (e.Control && e.KeyCode == Keys.Oem2)
-            //else 
             if (e.Control && e.KeyCode == (Keys)Char.ToUpper(this.SettingsInstance.StartRecordingKey))
             {
+                isRecordingMode = true;
                 this.panelDrag.BackgroundImage = null;
                 isCustomCursorApplied = true;
                 CursorImage = Utility.GetCursor();
@@ -115,12 +122,8 @@ namespace Winform.PrintScreen
                 this.panelDrag.BackgroundImage = image1;
                 this.panelDrag.DoDragDrop(this.panelDrag, DragDropEffects.None);
 
-                this.FormBorderStyle = FormBorderStyle.FixedSingle;
-                //var bitmap = Properties.Resources.custom_cursor;
                 var bitmap = new Bitmap(Utility.GetCursor());
                 this.panelDrag.Cursor = new Cursor(bitmap.GetHicon());
-
-                //this.panelDrag.Cursor.Size = new Size( this.SettingsInstance.CursorImageSize, this.SettingsInstance.CursorImageSize);
 
                 disableMovement = true;
                 SendMessage(this.Handle, 61456, 0, 0);
@@ -129,15 +132,20 @@ namespace Winform.PrintScreen
                 {
                     var recordedText = speechRecognizer.GetRecordedText();
                     var image = Image.FromFile(latestImagePath);
-                    string docPath = Utility.BasePath + $"Documents/{DateTime.Now.ToString("yyyyMMddhhmmss")}.docx";
+                    
                     DocumentWriter writer = new DocumentWriter();
-                    writer.WriteDocument(recordedText, latestImagePath, docPath);
-                    Utility.LaunchWordDocument(docPath);
+                    writer.WriteDocument(recordedText, latestImagePath, DocPath);
+                    Utility.LaunchWordDocument(DocPath);
                     recordingStarted = false;
+
+                    if (speechRecognizer != null)
+                    {
+                        speechRecognizer = null;
+                    }
                 }
                 else
                 {
-                    if(speechRecognizer==null)
+                    if (speechRecognizer == null)
                         speechRecognizer = new SpeechRecognizer();
 
                     recordingStarted = true;
@@ -145,25 +153,33 @@ namespace Winform.PrintScreen
             }
             else if (e.Control && e.KeyCode == (Keys)Char.ToUpper(this.SettingsInstance.RotateKey))
             {
-                int currentDegree = 0;
-                CursorImage = GetCurrentCursorImage(out currentDegree);
-                this.panelDrag.Cursor = new Cursor((CursorImage as Bitmap).GetHicon());
-                
-                
-                isCustomCursorApplied = true;
+                if (isRecordingMode)
+                {
+                    int currentDegree = 0;
+                    CursorImage = GetCurrentCursorImage(out currentDegree);
+                    this.panelDrag.Cursor = new Cursor((CursorImage as Bitmap).GetHicon());
+                    isCustomCursorApplied = true;
+                }
             }
-            //else if (e.Control && e.KeyCode == Keys.P)
-            //{
-            //    degreeRotation = 0;
-            //    //var bitmap = Properties.Resources.custom_cursor;
-            //    var bitmap = new Bitmap(Utility.GetCursor());
-            //    this.panelDrag.Cursor = new Cursor(bitmap.GetHicon());
-            //    isCustomCursorApplied = false;
-            //}
-            else if(e.Control && e.KeyCode == Keys.O)
+            else if (e.Control && e.KeyCode == Keys.O)
             {
                 var settingsPrompt = new Settings();
                 settingsPrompt.ShowDialog(this);
+            }
+            else if (e.Control && e.KeyCode == Keys.S)
+            {
+                isSquare = true;
+                this.panelDrag.Cursor = Cursors.Cross;
+                isCustomCursorApplied = false;
+            }
+
+            else if (e.Control && e.KeyCode == Keys.P)
+            {
+                isSquare = false;
+                this.panelDrag.Cursor = Cursors.Arrow;
+                isCustomCursorApplied = false;
+                isRecordingMode = false;
+                ClearRecordingMode();
             }
         }
 
@@ -195,6 +211,57 @@ namespace Winform.PrintScreen
 
             degree = degreeRotation;
             return image;
+        }
+
+        private void panelDrag_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (isSquare)
+            {
+                currentPos = e.Location;
+                this.panelDrag.Invalidate();
+            }
+        }
+
+        
+
+        private Rectangle getRectangle()
+        {
+            return new Rectangle(
+                Math.Min(startPos.X, currentPos.X),
+                Math.Min(startPos.Y, currentPos.Y),
+                Math.Abs(startPos.X - currentPos.X),
+                Math.Abs(startPos.Y - currentPos.Y));
+        }
+
+        private void panelDrag_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (isSquare)
+            {
+                isSquare = false;
+                var rc = getRectangle();
+                Image newImage = null;
+                Image img = null;
+                SolidBrush semiTransBrush2 = new SolidBrush(Color.Black);
+                Pen pen = new Pen(semiTransBrush2,2);
+
+                using (newImage = string.IsNullOrEmpty(latestImagePath) ? this.panelDrag.BackgroundImage : Image.FromFile(latestImagePath))
+                {
+                    using (Graphics g = Graphics.FromImage(newImage))
+                    {
+                        g.DrawRectangle(pen, getRectangle());
+                        latestImagePath = Utility.BasePath + $"Temp\\{Guid.NewGuid()}tempImage.jpeg";
+                        newImage.Save(latestImagePath, System.Drawing.Imaging.ImageFormat.Jpeg);
+                    }
+                }
+
+                img = Image.FromFile(latestImagePath);
+                this.panelDrag.BackgroundImage = img;
+
+                int currentDegree = 0;
+                CursorImage = GetCurrentCursorImage(out currentDegree);
+                this.panelDrag.Cursor = new Cursor((CursorImage as Bitmap).GetHicon());
+                isCustomCursorApplied = true;
+            }
         }
 
         Rectangle TopRight { get { return new Rectangle(this.ClientSize.Width - borderWidth, 0, borderWidth, borderWidth); } }
@@ -255,19 +322,23 @@ namespace Winform.PrintScreen
                     {
                         using (Graphics g = Graphics.FromImage(newImage))
                         {
-                            var bitmap = CursorImage;
+                            if (!isSquare)
+                            {
+                                var bitmap = CursorImage;
 
-                            Rectangle destRect = new Rectangle(e.X, e.Y, bitmap.Width, bitmap.Height);
-                            Rectangle sourceRect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+                                Rectangle destRect = new Rectangle(e.X, e.Y, bitmap.Width, bitmap.Height);
+                                Rectangle sourceRect = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
 
-                            StringFormat StrFormat = new StringFormat();
-                            StrFormat.Alignment = StringAlignment.Center;
+                                StringFormat StrFormat = new StringFormat();
+                                StrFormat.Alignment = StringAlignment.Center;
 
-                            g.DrawImage(bitmap, destRect, sourceRect, GraphicsUnit.Pixel);
+                                g.DrawImage(bitmap, destRect, sourceRect, GraphicsUnit.Pixel);
 
-                            g.DrawString(clickNo.ToString(), crFont, semiTransBrush2, new PointF(e.X + 35, e.Y + 20), StrFormat);
+                                g.DrawString(clickNo.ToString(), crFont, semiTransBrush2, new PointF(e.X + 35, e.Y + 20), StrFormat);
 
-                            g.Dispose();
+                                g.Dispose();
+                            }
+                           
 
                             latestImagePath = Utility.BasePath + $"Temp\\{Guid.NewGuid()}tempImage.jpeg";
 
@@ -278,7 +349,7 @@ namespace Winform.PrintScreen
                                 ImagePaths = new List<string>();
                             }
 
-                            if (ImagePaths.Where(t => t.ToLower() == latestImagePath.ToLower()).Count() < 1 )
+                            if (ImagePaths.Where(t => t.ToLower() == latestImagePath.ToLower()).Count() < 1)
                             {
                                 ImagePaths.Add(latestImagePath);
                             }
@@ -291,14 +362,19 @@ namespace Winform.PrintScreen
 
                     this.panelDrag.BackgroundImage = img;
 
-                    this.Opacity = 1;
+                    this.Opacity = AfterPO;
 
-                    this.FormBorderStyle = FormBorderStyle.None;
+                    //this.FormBorderStyle = FormBorderStyle.None;
 
-                    if (ImagePaths != null && ImagePaths.Count > 0)
-                    {
-                        Utility.DeleteTempImages(ImagePaths);
-                    }
+                    //if (ImagePaths != null && ImagePaths.Count > 0)
+                    //{
+                    //    Utility.DeleteTempImages(ImagePaths);
+                    //}
+                }
+
+                if (isSquare)
+                {
+                    currentPos = startPos = e.Location;
                 }
             }
         }
@@ -314,14 +390,23 @@ namespace Winform.PrintScreen
         {
             Rectangle rect = new Rectangle(x, y, w, h);
             Bitmap bmp = new Bitmap(rect.Width, rect.Height, PixelFormat.Format32bppArgb);
-            Graphics g = Graphics.FromImage(bmp);
-            g.CopyFromScreen(rect.Left, rect.Top, 0, 0, s, CopyPixelOperation.SourceCopy);
-            string screenShot = Utility.BasePath + "Temp\\screen.jpeg";
-            bmp.Save(screenShot, System.Drawing.Imaging.ImageFormat.Jpeg);
+            Task.Factory.StartNew(() =>
+            {
+                Graphics g = Graphics.FromImage(bmp);
+                g.CopyFromScreen(rect.Left, rect.Top, 0, 0, s, CopyPixelOperation.SourceCopy);
+                string screenShot = Utility.BasePath + "Temp\\screen.jpeg";
+                bmp.Save(screenShot, System.Drawing.Imaging.ImageFormat.Jpeg);
+            });
             return bmp;
         }
 
+        private void ClearRecordingMode()
+        {
+            this.Opacity = BeforePO;
+            this.panelDrag.BackgroundImage = null;
+            disableMovement = false;
+        }
 
-        
+
     }
 }

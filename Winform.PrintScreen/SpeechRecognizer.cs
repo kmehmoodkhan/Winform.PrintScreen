@@ -25,13 +25,14 @@ namespace Winform.PrintScreen
         }
         void speechRecognitionWithDictationGrammar_SpeechRecognized(object sender, SpeechRecognizedEventArgs e)
         {
-            if (e.Result.Text == "exit")
+            if (!string.IsNullOrEmpty(recordedText))
             {
-                manualResetEvent.Set();
-                return;
+                recordedText += (" " + e.Result.Text);
             }
-
-            recordedText += e.Result.Text;
+            else
+            {
+                recordedText += e.Result.Text;
+            }
         }
 
        public string GetRecordedText()
