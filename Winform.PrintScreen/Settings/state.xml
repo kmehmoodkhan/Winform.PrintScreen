@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <SettingsInstance xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <CursorImageSize>30</CursorImageSize>
+  <CursorImageSize>100</CursorImageSize>
   <ToggleSessionKey>97</ToggleSessionKey>
   <StartRecordingKey>98</StartRecordingKey>
   <NewLabelKey>99</NewLabelKey>
   <UndoKey>100</UndoKey>
   <RotateKey>114</RotateKey>
   <NumberColor>0000FF</NumberColor>
-  <NumberFontSize>10</NumberFontSize>
-  <BorderColor>FFFF00</BorderColor>
+  <NumberFontSize>12</NumberFontSize>
+  <BorderColor>000000</BorderColor>
   <BorderWidth>15</BorderWidth>
 </SettingsInstance>

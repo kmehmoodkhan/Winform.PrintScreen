@@ -31,6 +31,7 @@ namespace Winform.PrintScreen
         Point currentPos;
         const double BeforePO = .10;
         const double AfterPO = 1;
+        int currentRotationDegree = 0;
 
 
         string _docPath = string.Empty;
@@ -157,6 +158,7 @@ namespace Winform.PrintScreen
                 {
                     int currentDegree = 0;
                     CursorImage = GetCurrentCursorImage(out currentDegree);
+                    currentRotationDegree = currentDegree;
                     this.panelDrag.Cursor = new Cursor((CursorImage as Bitmap).GetHicon());
                     isCustomCursorApplied = true;
                 }
@@ -332,9 +334,50 @@ namespace Winform.PrintScreen
                                 StringFormat StrFormat = new StringFormat();
                                 StrFormat.Alignment = StringAlignment.Center;
 
-                                g.DrawImage(bitmap, destRect, sourceRect, GraphicsUnit.Pixel);
+                                //g.DrawImage(bitmap, destRect, sourceRect, GraphicsUnit.Point);
 
-                                g.DrawString(clickNo.ToString(), crFont, semiTransBrush2, new PointF(e.X + 35, e.Y + 20), StrFormat);
+                                double half = bitmap.Width / 2;
+                                int pointX = 0;
+                                int pointY = 0;
+
+                                if(half < e.X)
+                                {
+                                    pointX = e.X-(int)half;
+                                }
+
+                                if (half < e.Y)
+                                {
+                                    pointY = e.Y - (int)half;
+                                }
+
+                                Point p = new Point(pointX, pointY);
+
+                                g.DrawImage(bitmap, p);
+
+                                Point pString = new Point();
+
+                                if (currentRotationDegree == 0)
+                                {
+                                    pString.X = p.X + (int)half;
+                                    pString.Y = p.Y + (int)half;
+                                }
+                                else if (currentRotationDegree == 90)
+                                {
+                                    pString.X = p.X + (int)half-10;
+                                    pString.Y = p.Y + (int)half - 20;
+                                }
+                                else if (currentRotationDegree == 180)
+                                {
+                                    pString.X = p.X + (int)half;
+                                    pString.Y = p.Y + (int)half-20;
+                                }
+                                else if (currentRotationDegree == 270)
+                                {
+                                    pString.X = p.X + (int)half+5;
+                                    pString.Y = p.Y + (int)half-5;
+                                }
+
+                                g.DrawString(clickNo.ToString(), crFont, semiTransBrush2, new PointF(pString.X, pString.Y), StrFormat);
 
                                 g.Dispose();
                             }
@@ -364,12 +407,6 @@ namespace Winform.PrintScreen
 
                     this.Opacity = AfterPO;
 
-                    //this.FormBorderStyle = FormBorderStyle.None;
-
-                    //if (ImagePaths != null && ImagePaths.Count > 0)
-                    //{
-                    //    Utility.DeleteTempImages(ImagePaths);
-                    //}
                 }
 
                 if (isSquare)
@@ -379,12 +416,7 @@ namespace Winform.PrintScreen
             }
         }
 
-        private void btnCaptureThis_Click(object sender, EventArgs e)
-        {
-            this.Hide();
-            //Save save = new Save(this.Location.X, this.Location.Y, this.Width, this.Height, this.Size);
-            //save.Show();
-        }
+   
 
         private Image SaveImage(Int32 x, Int32 y, Int32 w, Int32 h, Size s)
         {
@@ -407,6 +439,7 @@ namespace Winform.PrintScreen
             disableMovement = false;
         }
 
+        
 
     }
 }
